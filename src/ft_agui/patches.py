@@ -124,8 +124,8 @@ def setup_ft_patches():
     def __ft__(self: RunErrorEvent):
         return Div(
             Div("⚠️ Error:", cls="agui-error-title"),
-            Div(self.error, cls="agui-error-message"),
-            Div(self.details, cls="agui-error-details") if getattr(self, 'details', None) else "",
+            Div(self.type, cls="agui-error-message"),
+            Div(self.message, cls="agui-error-details") if getattr(self, 'details', None) else "",
             cls="agui-error",
             role="alert",
             id="agui-messages",

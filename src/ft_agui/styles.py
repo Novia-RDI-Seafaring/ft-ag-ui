@@ -261,6 +261,35 @@ CHAT_UI_STYLES = """
   text-align: center;
 }
 
+/* === Suggestion Buttons === */
+#suggestion-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.suggestion-btn {
+  padding: 0.5rem 1rem;
+  background: var(--chat-surface);
+  border: 1px solid var(--chat-border);
+  border-radius: 1rem;
+  color: var(--chat-primary);
+  font-size: 0.875rem;
+  font-family: var(--chat-font-family);
+  cursor: pointer;
+  transition: var(--chat-transition);
+  white-space: nowrap;
+}
+
+.suggestion-btn:hover {
+  background: var(--chat-primary);
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: var(--chat-shadow-lg);
+}
+
 .chat-input-form {
   display: grid;
   grid-template-columns: 1fr auto;

@@ -89,6 +89,7 @@ class UI(Generic[T]):
             container_attrs['hx_swap_oob'] = 'outerHTML'
 
         return Div(
+            Div(id="suggestion-buttons"),  # Empty placeholder for suggestions
             Div(id="chat-status", cls="chat-status"),
             Form(
                 Hidden(name='thread_id', value=self.thread_id),
@@ -215,6 +216,7 @@ class AGUIThread(Generic[T]):
         self._messages: List[BaseMessage] = []
         self._connections = {}
         self.ui = UI[T](self.thread_id, autoscroll=False)
+        self._suggestions: List[str] = []
 
     def subscribe(self, connection_id,  send):
         print("subscribing", connection_id)
@@ -228,6 +230,40 @@ class AGUIThread(Generic[T]):
         """Broadcast element to all connected clients in a thread"""
         for connection_id, send in self._connections.items():
             await send(element)
+
+    async def set_suggestions(self, suggestions: List[str]):
+        """Set suggestion buttons and broadcast to all connected clients"""
+        self._suggestions = suggestions[:4]  # Limit to 4 suggestions
+
+        # Create suggestion buttons element
+        if self._suggestions:
+            suggestions_element = Div(
+                *[
+                    Button(
+                        suggestion,
+                        onclick=f"""
+                            const textarea = document.getElementById('chat-input');
+                            const form = document.getElementById('chat-form');
+                            if (textarea && form) {{
+                                textarea.value = {repr(suggestion)};
+                                form.requestSubmit();
+                            }}
+                        """,
+                        cls="suggestion-btn"
+                    ) for suggestion in self._suggestions
+                ],
+                id="suggestion-buttons",
+                hx_swap_oob="outerHTML"
+            )
+        else:
+            # Empty suggestions
+            suggestions_element = Div(id="suggestion-buttons", hx_swap_oob="outerHTML")
+
+        await self.send(suggestions_element)
+
+    def get_suggestions(self) -> List[str]:
+        """Get current suggestions"""
+        return self._suggestions.copy()
 
     async def _handle_message(self, msg: str, session):
         """Handle incoming WebSocket message"""
@@ -383,9 +419,19 @@ class AGUISetup(Generic[T]):
     def chat(self, thread_id):
         return self.thread(thread_id).ui.chat_loader()
 
+    async def set_suggestions(self, thread_id: str, suggestions: List[str]):
+        """Set suggestions for a specific thread"""
+        await self.thread(thread_id).set_suggestions(suggestions)
+
+    def get_suggestions(self, thread_id: str) -> List[str]:
+        """Get current suggestions for a thread"""
+        return self.thread(thread_id).get_suggestions()
 
 
-def setup_agui(app, agent: Agent, initial_state: T, state_type: type[T]) -> AGUISetup[T]:
+
+def setup_agui(app, agent: Agent, initial_state: T, state_type: type[T], tools: Optional[List[Tool]] = [],
+            forwarded_props: Any = {},
+            context: List[Context] = []) -> AGUISetup[T]:
     """
     Setup AGUI for a FastHTML application
 
@@ -411,4 +457,4 @@ def setup_agui(app, agent: Agent, initial_state: T, state_type: type[T]) -> AGUI
     """
     json = initial_state.model_dump_json()
     state = state_type.model_validate_json(json)
-    return AGUISetup[T](app, agent, state)
+    return AGUISetup[T](app, agent, state, tools, forwarded_props, context)
