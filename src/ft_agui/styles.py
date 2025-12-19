@@ -92,6 +92,101 @@ CHAT_UI_STYLES = """
   animation: chat-message-in 0.3s ease-out;
 }
 
+/* Markdown styles for chat messages */
+.chat-message-content p {
+  margin: 0 0 0.5rem 0;
+}
+
+.chat-message-content p:last-child {
+  margin-bottom: 0;
+}
+
+.chat-message-content ul,
+.chat-message-content ol {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+}
+
+.chat-message-content li {
+  margin: 0.25rem 0;
+}
+
+.chat-message-content code {
+  background: rgba(0, 0, 0, 0.1);
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  font-size: 0.875em;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.chat-assistant .chat-message-content code {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.chat-message-content pre {
+  background: #1e293b;
+  color: #e2e8f0;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin: 0.75rem 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.chat-message-content pre code {
+  background: none;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+}
+
+/* Dark theme code blocks */
+@media (prefers-color-scheme: dark) {
+  .chat-message-content pre {
+    background: #0f172a;
+    border: 1px solid var(--chat-border);
+  }
+}
+
+.chat-message-content blockquote {
+  border-left: 3px solid var(--chat-border);
+  padding-left: 1rem;
+  margin: 0.5rem 0;
+  color: var(--chat-text-muted);
+}
+
+.chat-message-content h1,
+.chat-message-content h2,
+.chat-message-content h3,
+.chat-message-content h4 {
+  margin: 0.75rem 0 0.5rem 0;
+  font-weight: 600;
+}
+
+.chat-message-content h1 { font-size: 1.25rem; }
+.chat-message-content h2 { font-size: 1.125rem; }
+.chat-message-content h3 { font-size: 1rem; }
+.chat-message-content h4 { font-size: 0.875rem; }
+
+.chat-message-content table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.5rem 0;
+}
+
+.chat-message-content th,
+.chat-message-content td {
+  border: 1px solid var(--chat-border);
+  padding: 0.5rem;
+  text-align: left;
+}
+
+.chat-message-content th {
+  background: rgba(0, 0, 0, 0.05);
+  font-weight: 600;
+}
+
 @keyframes chat-message-in {
   from {
     opacity: 0;

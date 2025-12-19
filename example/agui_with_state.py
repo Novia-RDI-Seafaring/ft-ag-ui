@@ -30,9 +30,15 @@ class Note(BaseModel):
     content: str|TermList
 
     def __ft__(self):
+        # Add 'marked' class for markdown rendering when content is a string
+        if isinstance(self.content, str):
+            content_div = Div(self.content, cls="marked prose prose-sm")
+        else:
+            content_div = Div(self.content, cls="prose prose-sm")
+
         return Li(
             Card(
-                P(self.content),
+                content_div,
                 header=H4(self.title)
             )
         )
@@ -109,8 +115,8 @@ def set_topic(ctx: RunContext[StateDeps[ChatState]], topic: str) -> ToolReturn:
 
 
 
-# Create FastHTML app with WebSocket support
-app, rt = fast_app(exts='ws')
+# Create FastHTML app with WebSocket and MarkdownJS support
+app, rt = fast_app(exts='ws', hdrs=[MarkdownJS()])
 
 # Setup AGUI with state - just as easy!
 agui = setup_agui(app, agent, ChatState(), ChatState)

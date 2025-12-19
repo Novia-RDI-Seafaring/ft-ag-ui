@@ -125,6 +125,7 @@ class UI(Generic[T]):
 
         components.extend([
             get_chat_styles(),  # Include CSS
+            MarkdownJS(), # Add markdown support
             Div(
                 id="chat-messages",
                 cls="chat-messages",
@@ -162,6 +163,19 @@ class UI(Generic[T]):
                         form.requestSubmit();
                     }
                 }
+            }
+
+            // Re-render markdown when content changes
+            function renderMarkdown(elementId) {
+                setTimeout(() => {
+                    const element = document.getElementById(elementId);
+                    if (element && window.marked && element.classList.contains('marked')) {
+                        const content = element.textContent || element.innerText;
+                        if (content) {
+                            element.innerHTML = marked.parse(content);
+                        }
+                    }
+                }, 10);
             }
         """))
 
@@ -242,6 +256,10 @@ class AGUIThread(Generic[T]):
         # Trigger the run
         await self.send(self.ui._render_messages(self._messages))
         await self.send(self.ui._trigger_run(run_id))
+        await self.send(
+            Div(
+                Div(Span(cls="loading"), id="run-start"),
+                id="agui-messages", hx_swap_oob="beforeend"))
         await self.send(self.ui._clear_input())
 
     async def _handle_run(self, run_id: str):
@@ -275,7 +293,18 @@ class AGUIThread(Generic[T]):
                 response.content += event.delta
             elif event.type == EventType.RUN_FINISHED:
                 self._messages.append(response)
-                await self.send(Span(response.content, id=f"message-content-{response.id}", hx_swap_oob="outerHTML"))
+                # Replace the entire message div with properly rendered markdown
+                content_id = f"content-{response.id}"
+                await self.send(
+                    Div(
+                        Div(response.content, cls="chat-message-content marked", id=content_id),
+                        cls="chat-message chat-assistant",
+                        id=f"message-{response.id}",
+                        hx_swap_oob="outerHTML"
+                    )
+                )
+                # Trigger markdown rendering
+                await self.send(Script(f"renderMarkdown('{content_id}');"))
                 # Clear the status when run completes
                 await self.send(Div(id="chat-status", hx_swap_oob="innerHTML"))
             elif event.type == EventType.STATE_SNAPSHOT:

@@ -36,7 +36,7 @@ def setup_ft_patches():
     def __ft__(self: BaseMessage):
         message_class = "chat-user" if self.role == "user" else "chat-assistant"
         return Div(
-            Div(self.content, cls="chat-message-content"),
+            Div(self.content, cls="chat-message-content marked"),
             cls=f"chat-message {message_class}",
             id=self.id
         )
@@ -55,7 +55,7 @@ def setup_ft_patches():
     def __ft__(self: TextMessageStartEvent):
         return Div(
             Div(
-                Div(Span("", id=f"message-content-{self.message_id}"),Span("",cls="chat-streaming", id=f"streaming-{self.message_id}"), cls="chat-message-content"),
+                Div(Span("", id=f"message-content-{self.message_id}", cls="marked"),Span("",cls="chat-streaming", id=f"streaming-{self.message_id}"), cls="chat-message-content"),
                 cls="chat-message chat-assistant",
                 id=f"message-{self.message_id}"
             ),
