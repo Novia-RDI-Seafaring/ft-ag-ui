@@ -40,12 +40,15 @@ class UI(Generic[T]):
         print("sending trigger run", self.thread_id, run_id)
         """Create element to trigger agent run"""
         return Div(
-            Div("...running...", id=f"run-{run_id}",
+            "...running...",
+            Div(
+                id=f"run-trigger-{run_id}",
                 hx_get=f'/agui/run/{self.thread_id}/{run_id}',
                 hx_trigger='load',
+                style="display: none;"
             ),
-            id="agui-run",
-            hx_swap_oob="beforeend"
+            id="chat-status",
+            hx_swap_oob="innerHTML"
         )
 
     def _clear_input(self):
@@ -86,6 +89,7 @@ class UI(Generic[T]):
             container_attrs['hx_swap_oob'] = 'outerHTML'
 
         return Div(
+            Div(id="chat-status", cls="chat-status"),
             Form(
                 Hidden(name='thread_id', value=self.thread_id),
                 Textarea(
@@ -259,6 +263,8 @@ class AGUIThread(Generic[T]):
                 response.content += event.delta
             elif event.type == EventType.RUN_FINISHED:
                 self._messages.append(response)
+                # Clear the status when run completes
+                await self.send(Div(id="chat-status", hx_swap_oob="innerHTML"))
             elif event.type == EventType.STATE_SNAPSHOT:
                 self._state = event.snapshot
 

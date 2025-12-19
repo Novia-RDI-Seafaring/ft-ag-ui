@@ -158,6 +158,14 @@ CHAT_UI_STYLES = """
   border-top: 1px solid var(--chat-border);
 }
 
+.chat-status {
+  min-height: 1.5rem;
+  padding: 0.5rem 0;
+  color: var(--chat-text-muted);
+  font-size: 0.875rem;
+  text-align: center;
+}
+
 .chat-input-form {
   display: grid;
   grid-template-columns: 1fr auto;
