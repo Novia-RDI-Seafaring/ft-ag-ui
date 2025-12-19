@@ -1,0 +1,131 @@
+"""
+Patches to add FastHTML rendering (__ft__) methods to ag_ui protocol types
+"""
+from fasthtml.common import *
+from ag_ui.core.types import BaseMessage
+from ag_ui.core.events import (
+        TextMessageStartEvent,
+        TextMessageContentEvent,
+        TextMessageEndEvent,
+        TextMessageChunkEvent,
+        ToolCallStartEvent,
+        ToolCallArgsEvent,
+        ToolCallEndEvent,
+        ToolCallChunkEvent,
+        ToolCallResultEvent,
+        StateSnapshotEvent,
+        StateDeltaEvent,
+        MessagesSnapshotEvent,
+        ActivitySnapshotEvent,
+        ActivityDeltaEvent,
+        RawEvent,
+        CustomEvent,
+        RunStartedEvent,
+        RunFinishedEvent,
+        RunErrorEvent,
+        StepStartedEvent,
+        StepFinishedEvent,
+)
+
+
+def setup_ft_patches():
+    """Setup FastHTML rendering patches for ag_ui types"""
+
+    # Patch BaseMessage
+    @patch
+    def __ft__(self: BaseMessage):
+        return Li(
+            Div(f"[{self.role.title()}] {getattr(self, 'name', '') or ''}:", cls="agui-message-role"),
+            Div(self.content, cls="agui-message-content"),
+            cls=f"agui-message agui-{self.role}",
+            id=self.id
+        )
+
+    # Patch RunStartedEvent
+    @patch
+    def __ft__(self: RunStartedEvent):
+        return Div(
+            Div(id=f"run-{self.run_id}"),
+            id="agui-messages",
+            hx_swap_oob="beforeend"
+        )
+
+    # Patch TextMessageStartEvent
+    @patch
+    def __ft__(self: TextMessageStartEvent):
+        return Div(
+            Li(
+                Div("Assistant:", cls="agui-message-role"),
+                Div("", id=f"message-content-{self.message_id}", cls="agui-message-content agui-message-streaming"),
+                cls="agui-message agui-assistant",
+                id=f"message-{self.message_id}"
+            ),
+            id="agui-messages",
+            hx_swap_oob="beforeend"
+        )
+
+    # Patch TextMessageChunkEvent
+    @patch
+    def __ft__(self: TextMessageChunkEvent):
+        return Span(
+            self.delta,
+            id=f"message-content-{self.message_id}",
+            hx_swap_oob="beforeend"
+        )
+
+    # Patch TextMessageContentEvent
+    @patch
+    def __ft__(self: TextMessageContentEvent):
+        return Span(
+            self.delta,
+            id=f"message-content-{self.message_id}",
+            hx_swap_oob="beforeend"
+        )
+
+    # Patch StateSnapshotEvent
+    @patch
+    def __ft__(self: StateSnapshotEvent):
+        if hasattr(self.snapshot, '__ft__'):
+            return self.snapshot.__ft__()
+        return Div(
+            Pre(str(self.snapshot)),
+            id="agui-state",
+            hx_swap_oob="innerHTML"
+        )
+
+    # Patch ToolCallStartEvent
+    @patch
+    def __ft__(self: ToolCallStartEvent):
+        return Div(
+            Div(
+                f"🔧 Calling {self.tool_call_name}...",
+                Span(Span(cls="loading"), id=f"tool-call-status-{self.tool_call_id}"),
+                id=f"tool-{self.tool_call_id}",
+                cls="agui-tool-call"
+            ),
+            id="agui-messages",
+            hx_swap_oob="beforeend"
+        )
+
+    # Patch ToolCallEndEvent
+    @patch
+    def __ft__(self: ToolCallEndEvent):
+        return Span(
+            f"✅",
+            id=f"tool-call-status-{self.tool_call_id}",
+            hx_swap_oob="outerHTML",
+            cls="agui-tool-result"
+        )
+
+    # Patch ErrorEvent
+    @patch
+    def __ft__(self: RunErrorEvent):
+        return Div(
+            Div("⚠️ Error:", cls="agui-error-title"),
+            Div(self.error, cls="agui-error-message"),
+            Div(self.details, cls="agui-error-details") if getattr(self, 'details', None) else "",
+            cls="agui-error",
+            role="alert",
+            id="agui-messages",
+            hx_swap_oob="beforeend"
+        )
