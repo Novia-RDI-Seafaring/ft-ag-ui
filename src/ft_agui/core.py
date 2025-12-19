@@ -100,7 +100,7 @@ class UI(Generic[T]):
                     autocomplete="off",
                     cls="chat-input-field",
                     rows="1",
-                    onkeydown="autoResize(this)",
+                    onkeydown="handleKeyDown(this, event)",
                     oninput="autoResize(this)"
                 ),
                 Button("Send", type="submit", cls="chat-input-button"),
@@ -135,7 +135,7 @@ class UI(Generic[T]):
             self._render_input_form(),
         ])
 
-        # Add auto-resize script for textarea
+        # Add auto-resize and enter submit script for textarea
         components.append(Script("""
             function autoResize(textarea) {
                 textarea.style.height = 'auto';
@@ -148,6 +148,19 @@ class UI(Generic[T]):
                     textarea.style.overflowY = 'auto';
                 } else {
                     textarea.style.overflowY = 'hidden';
+                }
+            }
+
+            function handleKeyDown(textarea, event) {
+                autoResize(textarea);
+
+                // Submit on Enter, but allow Shift+Enter for new lines
+                if (event.key === 'Enter' && !event.shiftKey) {
+                    event.preventDefault();
+                    const form = textarea.closest('form');
+                    if (form && textarea.value.trim()) {
+                        form.requestSubmit();
+                    }
                 }
             }
         """))
@@ -222,7 +235,6 @@ class AGUIThread(Generic[T]):
             tools=[],
             forwarded_props=[],
             context=[],
-
         )
 
         self._runs[run_id] = run_input
@@ -259,10 +271,11 @@ class AGUIThread(Generic[T]):
 
             if event.type == EventType.TEXT_MESSAGE_START:
                 response.id = event.message_id
-            elif event.type == EventType.TEXT_MESSAGE_CHUNK:
+            elif event.type == EventType.TEXT_MESSAGE_CONTENT:
                 response.content += event.delta
             elif event.type == EventType.RUN_FINISHED:
                 self._messages.append(response)
+                await self.send(Span(response.content, id=f"message-content-{response.id}", hx_swap_oob="outerHTML"))
                 # Clear the status when run completes
                 await self.send(Div(id="chat-status", hx_swap_oob="innerHTML"))
             elif event.type == EventType.STATE_SNAPSHOT:

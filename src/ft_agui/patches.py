@@ -55,7 +55,7 @@ def setup_ft_patches():
     def __ft__(self: TextMessageStartEvent):
         return Div(
             Div(
-                Div("", id=f"message-content-{self.message_id}", cls="chat-message-content chat-streaming"),
+                Div(Span("", id=f"message-content-{self.message_id}"),Span("",cls="chat-streaming", id=f"streaming-{self.message_id}"), cls="chat-message-content"),
                 cls="chat-message chat-assistant",
                 id=f"message-{self.message_id}"
             ),
@@ -80,6 +80,10 @@ def setup_ft_patches():
             id=f"message-content-{self.message_id}",
             hx_swap_oob="beforeend"
         )
+    
+    @patch
+    def __ft__(self:TextMessageEndEvent):
+        return Span("", id=f"streaming-{self.message_id}")
 
     # Patch StateSnapshotEvent
     @patch
