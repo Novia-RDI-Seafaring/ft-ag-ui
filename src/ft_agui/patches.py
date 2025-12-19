@@ -34,10 +34,10 @@ def setup_ft_patches():
     # Patch BaseMessage
     @patch
     def __ft__(self: BaseMessage):
-        return Li(
-            Div(f"[{self.role.title()}] {getattr(self, 'name', '') or ''}:", cls="agui-message-role"),
-            Div(self.content, cls="agui-message-content"),
-            cls=f"agui-message agui-{self.role}",
+        message_class = "chat-user" if self.role == "user" else "chat-assistant"
+        return Div(
+            Div(self.content, cls="chat-message-content"),
+            cls=f"chat-message {message_class}",
             id=self.id
         )
 
@@ -54,13 +54,12 @@ def setup_ft_patches():
     @patch
     def __ft__(self: TextMessageStartEvent):
         return Div(
-            Li(
-                Div("Assistant:", cls="agui-message-role"),
-                Div("", id=f"message-content-{self.message_id}", cls="agui-message-content agui-message-streaming"),
-                cls="agui-message agui-assistant",
+            Div(
+                Div("", id=f"message-content-{self.message_id}", cls="chat-message-content chat-streaming"),
+                cls="chat-message chat-assistant",
                 id=f"message-{self.message_id}"
             ),
-            id="agui-messages",
+            id="chat-messages",
             hx_swap_oob="beforeend"
         )
 
@@ -98,12 +97,11 @@ def setup_ft_patches():
     def __ft__(self: ToolCallStartEvent):
         return Div(
             Div(
-                f"🔧 Calling {self.tool_call_name}...",
-                Span(Span(cls="loading"), id=f"tool-call-status-{self.tool_call_id}"),
-                id=f"tool-{self.tool_call_id}",
-                cls="agui-tool-call"
+                Div(f"🔧 {self.tool_call_name}...", cls="chat-message-content"),
+                cls="chat-message chat-tool",
+                id=f"tool-{self.tool_call_id}"
             ),
-            id="agui-messages",
+            id="chat-messages",
             hx_swap_oob="beforeend"
         )
 

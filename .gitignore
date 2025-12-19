@@ -8,7 +8,7 @@ wheels/
 .sesskey
 
 #
-example/dev-*.*
-
+example/dev/*
+example/dev
 # Virtual environments
 .venv

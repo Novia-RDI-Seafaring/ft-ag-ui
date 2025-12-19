@@ -25,6 +25,7 @@ from fasthtml.core import *
 import uuid
 import asyncio
 from .patches import setup_ft_patches
+from .styles import get_chat_styles
 from typing import Generic, Callable
 from collections import defaultdict
 
@@ -48,41 +49,61 @@ class UI(Generic[T]):
         )
 
     def _clear_input(self):
-        """Clear the input field after sending"""
-        return Script("document.getElementById('agui-input').value = '';")
+        """Replace the form with a cleared version"""
+        return self._render_input_form(oob_swap=True)
 
     def _render_messages(self, messages: List[BaseMessage]):
         """Render chat messages"""
-        return Ul(
+        return Div(
             *[m.__ft__() if hasattr(m, '__ft__') else self._render_message(m) for m in messages],
-            id="agui-messages",
-            cls="agui-message-list"
+            id="chat-messages",
+            cls="chat-messages"
         )
 
     def _render_message(self, message: BaseMessage):
         """Render a single message (fallback if no __ft__ method)"""
-        return Li(
-            Div(f"{message.role.title()}: ", cls="agui-message-role"),
-            Div(message.content, cls="agui-message-content"),
-            cls=f"agui-message agui-{message.role}",
+        message_class = "chat-user" if message.role == "user" else "chat-assistant"
+        return Div(
+            Div(message.content, cls="chat-message-content"),
+            cls=f"chat-message {message_class}",
             id=message.id
         )
 
-    def _render_input_form(self):
+    def _render_input_form(self, oob_swap=False):
         """Render the input form"""
-        return Form(
-            Hidden(name='thread_id', value=self.thread_id),
-            Input(
-                id='agui-input',
-                name='msg',
-                placeholder="Type a message...",
-                autofocus=True,
-                autocomplete="off"
+        form_attrs = {
+            'id': 'chat-form',
+            'ws_send': True,
+        }
+
+        container_attrs = {
+            'cls': 'chat-input',
+            'id': 'chat-input-container'
+        }
+
+        # Only add OOB swap when clearing after message send
+        if oob_swap:
+            container_attrs['hx_swap_oob'] = 'outerHTML'
+
+        return Div(
+            Form(
+                Hidden(name='thread_id', value=self.thread_id),
+                Textarea(
+                    id='chat-input',
+                    name='msg',
+                    placeholder="Type a message...",
+                    autofocus=True,
+                    autocomplete="off",
+                    cls="chat-input-field",
+                    rows="1",
+                    onkeydown="autoResize(this)",
+                    oninput="autoResize(this)"
+                ),
+                Button("Send", type="submit", cls="chat-input-button"),
+                cls="chat-input-form",
+                **form_attrs
             ),
-            Button("Send", type="submit"),
-            id='agui-form',
-            ws_send=True,
-            cls="agui-input-form"
+            **container_attrs
         )
 
 
@@ -99,23 +120,45 @@ class UI(Generic[T]):
         components = []
 
         components.extend([
-            Div(id="agui-messages", cls="agui-message-list"),
-            Div(id="agui-stream"),
-            Div(id="agui-run"),
+            get_chat_styles(),  # Include CSS
+            Div(
+                id="chat-messages",
+                cls="chat-messages",
+                hx_get=f'/agui/messages/{self.thread_id}',
+                hx_trigger='load',
+                hx_swap='outerHTML'
+            ),
             self._render_input_form(),
         ])
+
+        # Add auto-resize script for textarea
+        components.append(Script("""
+            function autoResize(textarea) {
+                textarea.style.height = 'auto';
+                const maxHeight = 12 * 16; // 12rem in pixels (assuming 16px = 1rem)
+                const newHeight = Math.min(textarea.scrollHeight, maxHeight);
+                textarea.style.height = newHeight + 'px';
+
+                // Show scrollbar if content exceeds max height
+                if (textarea.scrollHeight > maxHeight) {
+                    textarea.style.overflowY = 'auto';
+                } else {
+                    textarea.style.overflowY = 'hidden';
+                }
+            }
+        """))
 
         if self.autoscroll:
             components.append(Script("""
                 // Auto-scroll to bottom on new messages
                 (function() {
                     const observer = new MutationObserver(() => {
-                        const messages = document.getElementById('agui-messages');
+                        const messages = document.getElementById('chat-messages');
                         if (messages) {
                             messages.scrollTop = messages.scrollHeight;
                         }
                     });
-                    const target = document.getElementById('agui-messages');
+                    const target = document.getElementById('chat-messages');
                     if (target) {
                         observer.observe(target, {childList: true, subtree: true});
                     }
@@ -126,7 +169,7 @@ class UI(Generic[T]):
             *components,
             hx_ext='ws',
             ws_connect=f'/agui/ws/{self.thread_id}',
-            cls="agui-chat-container",
+            cls="chat-container",
             **kwargs
         )
 
@@ -140,7 +183,7 @@ class AGUIThread(Generic[T]):
         self._agent = agent
         self._messages: List[BaseMessage] = []
         self._connections = {}
-        self.ui = UI[T](self.thread_id)
+        self.ui = UI[T](self.thread_id, autoscroll=False)
 
     def subscribe(self, connection_id,  send):
         print("subscribing", connection_id)
@@ -269,6 +312,14 @@ class AGUISetup(Generic[T]):
         @self.app.route('/agui/run/{thread_id}/{run_id}')
         async def run_handler(thread_id: str, run_id: str):
             return await self._threads[thread_id]._handle_run(run_id)
+
+        @self.app.route('/agui/messages/{thread_id}')
+        def get_messages(thread_id: str):
+            """Load existing messages for a thread"""
+            thread = self.thread(thread_id)
+            if thread._messages:
+                return thread.ui._render_messages(thread._messages)
+            return Div(id="chat-messages", cls="chat-messages")
 
     def thread(self, thread_id: str) -> AGUIThread[T]:
         self._threads.setdefault(thread_id, AGUIThread[T](thread_id=thread_id, state=self._state, agent=self.agent))
